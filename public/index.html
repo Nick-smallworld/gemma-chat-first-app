@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemma チャットアプリ</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        .app-container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            height: 100vh;
+            max-height: 900px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        /* 左ペイン */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            display: flex;
+            flex-direction: column;
+            color: white;
+            border-right: 3px solid #764ba2;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .sidebar-header h2 {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .new-session-btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: transform 0.2s;
+        }
+
+        .new-session-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .sessions-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .session-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 50px;
+        }
+
+        .session-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .session-item.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-left: 4px solid white;
+        }
+
+        .session-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .session-title {
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+
+        .session-date {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+
+        .session-delete-btn {
+            background: #e74c3c;
+            border: none;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            margin-left: 8px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .session-item:hover .session-delete-btn {
+            opacity: 1;
+        }
+
+        .session-delete-btn:hover {
+            background: #c0392b;
+        }
+
+        /* 右ペイン */
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 3px solid #764ba2;
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: #f7f7f7;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            animation: slideIn 0.3s ease-in-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message.assistant {
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 15px;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 3px;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 3px;
+        }
+
+        .message.error .message-content {
+            background: #ff6b6b;
+            color: white;
+            border-bottom-left-radius: 3px;
+        }
+
+        .loading-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #667eea;
+            font-size: 14px;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                opacity: 0.5;
+                transform: translateY(0);
+            }
+            30% {
+                opacity: 1;
+                transform: translateY(-10px);
+            }
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            font-size: 14px;
+            resize: none;
+            max-height: 100px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        #messageInput:focus {
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* スクロールバーのスタイル */
+        .messages-container::-webkit-scrollbar,
+        .sessions-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .messages-container::-webkit-scrollbar-track,
+        .sessions-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb,
+        .sessions-list::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 4px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb:hover,
+        .sessions-list::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                width: 200px;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+
+            .chat-header h1 {
+                font-size: 18px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                flex-direction: column;
+                max-height: 100vh;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                max-height: 150px;
+            }
+
+            .sessions-list {
+                display: flex;
+                overflow-x: auto;
+                padding: 10px;
+                flex-direction: row;
+            }
+
+            .session-item {
+                white-space: nowrap;
+                flex-shrink: 0;
+                min-width: 150px;
+            }
+
+            .chat-main {
+                max-height: calc(100vh - 150px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 左ペイン: セッション履歴 -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>📋 チャット履歴</h2>
+                <button class="new-session-btn" onclick="createNewSession()">+ 新規チャット</button>
+            </div>
+            <div class="sessions-list" id="sessionsList"></div>
+        </div>
+
+        <!-- 右ペイン: チャット -->
+        <div class="chat-main">
+            <div class="chat-header">
+                <h1>🤖 Gemmaチャット</h1>
+                <p>ローカルLLMと会話できます</p>
+            </div>
+
+            <div class="messages-container" id="messagesContainer">
+                <div class="message assistant">
+                    <div class="message-content">
+                        こんにちは！Gemmaです。何かお手伝いできることがあれば、お気軽にお聞きください。
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-container">
+                <textarea
+                    id="messageInput"
+                    placeholder="メッセージを入力してください... (Shift+Enter で改行、Enter で送信)"
+                    rows="1"
+                ></textarea>
+                <button id="sendBtn" onclick="sendMessage()">送信</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const messageInput = document.getElementById('messageInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const messagesContainer = document.getElementById('messagesContainer');
+        const sessionsList = document.getElementById('sessionsList');
+
+        let currentSessionId = null;
+        let sessions = [];
+
+        // ページロード時にセッション情報を取得
+        async function loadSessions() {
+            try {
+                const response = await fetch('/api/sessions');
+                const data = await response.json();
+                sessions = data.sessions;
+                currentSessionId = data.currentSessionId;
+                renderSessions();
+                loadCurrentSession();
+            } catch (error) {
+                console.error('セッション読み込みエラー:', error);
+            }
+        }
+
+        // セッション一覧をレンダリング
+        function renderSessions() {
+            sessionsList.innerHTML = '';
+            sessions.forEach((session) => {
+                const sessionDiv = document.createElement('div');
+                sessionDiv.className = `session-item ${session.id === currentSessionId ? 'active' : ''}`;
+
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'session-info';
+                infoDiv.onclick = () => switchSession(session.id);
+
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'session-title';
+                titleDiv.textContent = session.title;
+
+                const dateDiv = document.createElement('div');
+                dateDiv.className = 'session-date';
+                dateDiv.textContent = new Date(session.createdAt).toLocaleString('ja-JP', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                });
+
+                infoDiv.appendChild(titleDiv);
+                infoDiv.appendChild(dateDiv);
+                sessionDiv.appendChild(infoDiv);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'session-delete-btn';
+                deleteBtn.textContent = '削除';
+                deleteBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    deleteSession(session.id);
+                };
+                sessionDiv.appendChild(deleteBtn);
+
+                sessionsList.appendChild(sessionDiv);
+            });
+        }
+
+        // 新規セッション作成
+        async function createNewSession() {
+            try {
+                const response = await fetch('/api/sessions', { method: 'POST' });
+                const data = await response.json();
+                currentSessionId = data.id;
+                messagesContainer.innerHTML = '';
+                addMessage(
+                    'こんにちは！Gemmaです。何かお手伝いできることがあれば、お気軽にお聞きください。',
+                    'assistant'
+                );
+                await loadSessions();
+                messageInput.focus();
+            } catch (error) {
+                console.error('セッション作成エラー:', error);
+            }
+        }
+
+        // セッション切り替え
+        async function switchSession(sessionId) {
+            if (sessionId === currentSessionId) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/sessions/${sessionId}/switch`, {
+                    method: 'POST',
+                });
+                const data = await response.json();
+                currentSessionId = data.id;
+                messagesContainer.innerHTML = '';
+
+                // メッセージを復元
+                if (data.messages && data.messages.length > 0) {
+                    data.messages.forEach((msg) => {
+                        addMessage(msg.content, msg.role);
+                    });
+                } else {
+                    addMessage(
+                        'こんにちは！Gemmaです。何かお手伝いできることがあれば、お気軽にお聞きください。',
+                        'assistant'
+                    );
+                }
+
+                renderSessions();
+                messageInput.focus();
+            } catch (error) {
+                console.error('セッション切り替えエラー:', error);
+            }
+        }
+
+        // セッション削除
+        async function deleteSession(sessionId) {
+            if (confirm('このチャットを削除してもよろしいですか？')) {
+                try {
+                    const response = await fetch(`/api/sessions/${sessionId}`, {
+                        method: 'DELETE',
+                    });
+                    const data = await response.json();
+
+                    if (sessionId === currentSessionId) {
+                        currentSessionId = data.newSessionId;
+                        messagesContainer.innerHTML = '';
+                        addMessage(
+                            'こんにちは！Gemmaです。何かお手伝いできることがあれば、お気軽にお聞きください。',
+                            'assistant'
+                        );
+                    }
+
+                    await loadSessions();
+                } catch (error) {
+                    console.error('セッション削除エラー:', error);
+                }
+            }
+        }
+
+        // 現在のセッションを読み込み
+        async function loadCurrentSession() {
+            try {
+                const response = await fetch(`/api/sessions/${currentSessionId}/switch`, {
+                    method: 'POST',
+                });
+                const data = await response.json();
+                messagesContainer.innerHTML = '';
+
+                if (data.messages && data.messages.length > 0) {
+                    data.messages.forEach((msg) => {
+                        addMessage(msg.content, msg.role);
+                    });
+                } else {
+                    addMessage(
+                        'こんにちは！Gemmaです。何かお手伝いできることがあれば、お気軽にお聞きください。',
+                        'assistant'
+                    );
+                }
+            } catch (error) {
+                console.error('セッション読み込みエラー:', error);
+            }
+        }
+
+        // テキストエリアの自動サイズ調整
+        messageInput.addEventListener('input', () => {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = Math.min(messageInput.scrollHeight, 100) + 'px';
+        });
+
+        // Enterキーで送信、Shift+Enterで改行
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+
+            if (!message || !currentSessionId) {
+                return;
+            }
+
+            addMessage(message, 'user');
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+            sendBtn.disabled = true;
+
+            const loadingId = addLoadingMessage();
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message,
+                        sessionId: currentSessionId,
+                    }),
+                });
+
+                const data = await response.json();
+                removeLoadingMessage(loadingId);
+
+                if (!response.ok) {
+                    addMessage(data.error || 'エラーが発生しました', 'error');
+                } else {
+                    addMessage(data.response, 'assistant');
+                    // セッション一覧を更新
+                    await loadSessions();
+                }
+            } catch (error) {
+                removeLoadingMessage(loadingId);
+                addMessage(
+                    'サーバーに接続できません。サーバーが起動しているか確認してください。',
+                    'error'
+                );
+                console.error('Error:', error);
+            } finally {
+                sendBtn.disabled = false;
+                messageInput.focus();
+            }
+        }
+
+        function addMessage(content, role) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+
+            messageDiv.appendChild(contentDiv);
+            messagesContainer.appendChild(messageDiv);
+
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function addLoadingMessage() {
+            const messageDiv = document.createElement('div');
+            const id = 'loading-' + Date.now();
+            messageDiv.id = id;
+            messageDiv.className = 'message assistant';
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'loading-indicator';
+            contentDiv.innerHTML = `
+                入力中
+                <div class="typing-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+
+            messageDiv.appendChild(contentDiv);
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            return id;
+        }
+
+        function removeLoadingMessage(id) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.remove();
+            }
+        }
+
+        // ページロード時の初期化
+        loadSessions();
+        messageInput.focus();
+    </script>
+</body>
+</html>
+
